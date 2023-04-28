@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Φόρμες πελατών</title>
+    <?!= include('styles'); ?>
+  </head>
+  <body>
+    <div class="container my-4">
+      <div class="accordion" id="accordion_main">
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingCustomer">
+            <button
+              class="accordion-button fw-bold"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#collapseCustomer"
+              aria-expanded="true"
+              aria-controls="collapseCustomer"
+            >
+              Πελάτες
+            </button>
+          </h2>
+          <div
+            id="collapseCustomer"
+            class="accordion-collapse collapse show"
+            aria-labelledby="headingCustomer"
+            data-bs-parent="#accordion_main"
+          >
+            <div class="accordion-body">
+              <?!= include('index-customer'); ?>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingDocument">
+            <button
+              class="accordion-button fw-bold"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#collapseDocument"
+              aria-expanded="true"
+              aria-controls="collapseDocument"
+            >
+              Έγγραφα
+            </button>
+          </h2>
+          <div
+            id="collapseDocument"
+            class="accordion-collapse collapse show"
+            aria-labelledby="headingDocument"
+            data-bs-parent="#accordion_main"
+          >
+            <div class="accordion-body">        
+              <ul class="nav nav-tabs"></ul>
+              <div id="tabs-content"></div>
+              <button class="btn btn-primary border border-dark" id="document_submit">Συμπλήρωση</button>
+              <button class="btn btn-warning border border-dark mx-2" id="document_clear">Εκκαθάριση</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="loading">Loading&#8230;</div>
+    <?!= include('modal-customer-select'); ?>
+    <?!= include('modal-customer-delete'); ?>
+    <?!= include('toast'); ?>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.min.js"
+      integrity="sha384-cuYeSxntonz0PPNlHhBs68uyIAVpIIOZZ5JqeqvYYIcEL727kskC66kF92t6Xl2V"
+      crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/micromodal/dist/micromodal.min.js"></script>
+    <?!= include('javascript'); ?>
+  </body>
+</html>

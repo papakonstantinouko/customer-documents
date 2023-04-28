@@ -1,0 +1,261 @@
+<script>  
+  window.onload = () => {
+    // *********
+    // JS common
+    MicroModal.init();
+
+    const elements = {
+      loading: document.querySelector('.loading'),
+      toast: document.querySelector('.toast'),
+      customer: {
+        selected: null,
+        searchResults: [],
+        modalSelect: document.querySelector('#modal-customer-select tbody'),
+        modalDelete: document.querySelector('#modal-customer-delete-content'),
+        submit: document.getElementById('customer_submit'),
+        form: document.querySelector('#customer_form')
+      },
+      document: {
+        checkboxes: null,
+        submit: document.getElementById('document_submit')
+      }
+    };
+
+    function showToast(body, className) {
+      const { toast } = elements;
+      toast.querySelector('.toast-body').innerText = body;
+      const textBgClass = [...toast.classList].find(c => c.startsWith('text-bg'))
+      toast.classList.remove(textBgClass)
+      toast.classList.add(className)
+      new bootstrap.Toast(toast).show();
+    }
+    
+
+    // *************************************************************************** //
+    // JS for index-customer
+    elements.customer.modalDelete.querySelector('div').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-customer-delete-yes') {
+        elements.loading.style.display = 'block';
+        google.script.run
+          .withSuccessHandler((deleted) => {
+            elements.loading.style.display = 'none';
+            e.target.disabled = false;
+            if (deleted) {
+              showToast('Επιτυχής διαγραφή πελάτη!', 'text-bg-primary');
+              document.getElementById('button_clear').click();
+            }
+          })
+          .withFailureHandler(() => {
+            elements.loading.style.display = 'none';
+            e.target.disabled = false;
+            showToast('Σφάλμα κατά τη διαγραφή!', 'text-bg-danger');
+          })
+          .deleteCustomer(elements.customer.selected);
+      }
+      MicroModal.close('modal-customer-delete');
+    });
+
+    document.getElementById('button_clear').addEventListener('click', () => {
+      elements.customer.form.reset();
+      elements.customer.selected = null;
+      elements.customer.searchResults = [];
+    });
+    
+    document.getElementById('button_delete').addEventListener('click', (e) => {
+      if (!elements.customer.selected) {
+        showToast('Πρέπει πρώτα να επιλέξετε έναν πελάτη!', 'text-bg-warning');
+        return;
+      }
+      elements.customer.modalDelete.querySelector('p').innerText = `Είστε σίγουροι ότι θέλετε να διαγράψετε τον/ην ${elements.customer.selected.first_name} ${elements.customer.selected.last_name} από τους πελάτες; Αυτομάτως θα διαγραφεί και ο φάκελος με τα έγγραφα του πελάτη.`;
+      MicroModal.show('modal-customer-delete');
+    });
+
+    document.getElementById('button_search').addEventListener('click', (e) => {
+      let formIsDirty = false;
+      elements.customer.form.querySelectorAll('input').forEach(input => formIsDirty |= !!input.value);
+      if (!formIsDirty) {
+        showToast('Δεν έχετε συμπληρώσει κανένα πεδίο για αναζήτηση!', 'text-bg-warning');
+        return;
+      }
+
+      e.target.disabled = true;
+      elements.loading.style.display = 'block';
+      google.script.run
+        .withSuccessHandler(data => {
+          elements.customer.searchResults = data;
+          elements.loading.style.display = 'none';
+          e.target.disabled = false;
+
+          if (elements.customer.searchResults.length) {
+            if (elements.customer.searchResults.length === 1) {
+              elements.customer.selected = elements.customer.searchResults[0];
+              elements.customer.form.querySelectorAll('input').forEach(input => input.value = elements.customer.selected[input.name]);
+              return;
+            }
+
+            while (elements.customer.modalSelect.firstChild) elements.customer.modalSelect.lastChild.remove();
+
+            elements.customer.searchResults.forEach(res => {
+              const row = document.createElement('tr');
+              const systemNumberCell = document.createElement('th');
+              const firstNameCell = document.createElement('td');
+              const lastNameCell = document.createElement('td');
+              const dobCell = document.createElement('td');
+              const afmCell = document.createElement('td');
+
+              systemNumberCell.setAttribute('scope', 'row')
+              systemNumberCell.innerText = res['system_number'];
+              firstNameCell.innerText = res['first_name'];
+              lastNameCell.innerText = res['last_name'];
+              dobCell.innerText = res['date_of_birth'];
+              afmCell.innerText = res['afm'];
+
+              row.appendChild(systemNumberCell);
+              row.appendChild(firstNameCell);
+              row.appendChild(lastNameCell);
+              row.appendChild(dobCell);
+              row.appendChild(afmCell);
+              row.dataset.systemNumber = res['system_number']
+              elements.customer.modalSelect.appendChild(row);
+            })
+
+            MicroModal.show('modal-customer-select');
+          } else {
+            showToast('Δε βρέθηκε πελάτης με αυτά τα στοιχεία!', 'text-bg-warning');
+          }
+        })
+        .withFailureHandler(() => {
+          elements.loading.style.display = 'none';
+          e.target.disabled = false;
+          showToast('Σφάλμα κατά την αναζήτηση!', 'text-bg-danger');
+        })
+        .searchCustomer(elements.customer.form);
+    });
+
+    elements.customer.modalSelect.addEventListener('click', (e) => {
+      const { systemNumber } = e.target.parentElement.dataset;
+      elements.customer.selected = elements.customer.searchResults.find(res => res['system_number'] === systemNumber);
+      elements.customer.form.querySelectorAll('input').forEach(input => input.value = elements.customer.selected[input.name]);
+      MicroModal.close('modal-customer-select');
+    })
+
+    elements.customer.form.addEventListener('submit', e => {
+      e.preventDefault();
+      updateSelectedCustomer(elements.customer.form);
+      elements.customer.submit.disabled = true;
+      elements.loading.style.display = 'block';
+
+      google.script.run
+        .withSuccessHandler(() => {
+          elements.loading.style.display = 'none';
+          showToast('Επιτυχής αποθήκευση πελάτη!', 'text-bg-primary');
+          elements.customer.submit.disabled = false;          
+        })
+        .withFailureHandler(() => {
+          elements.loading.style.display = 'none';
+          showToast('Σφάλμα κατά την αποθήκευση!', 'text-bg-danger');
+          elements.customer.submit.disabled = false;
+        })
+        .saveCustomer(elements.customer.form);
+    });
+
+
+    // *************************************************************************** //
+    // JS for index-document
+    elements.loading.style.display = 'block';
+    google.script.run
+        .withSuccessHandler(documentData => {
+          elements.loading.style.display = 'none';
+          const tabsContent = document.getElementById('tabs-content');
+          const ul = document.querySelector('ul.nav-tabs');
+          
+          Object.keys(documentData).forEach((folderName, index) => {
+            const li = document.createElement('li');
+            li.classList.add('nav-item');
+            li.style.cursor = 'pointer';
+            const a = document.createElement('a');
+            a.classList.add('nav-link');
+            index === 0 && a.classList.add('active');
+            a.innerText = folderName;
+            a.addEventListener('click', e => {
+              e.preventDefault();
+              [...document.getElementsByClassName('tab-content')].forEach(el => el.style.display = 'none');
+              [...document.getElementsByClassName('nav-link')].forEach(el => el.classList.remove('active'));
+              document.getElementById(folderName).style.display = 'block';
+              e.target.classList.add('active');
+            })
+            li.appendChild(a);
+            ul.appendChild(li);
+
+            documentData[folderName] = documentData[folderName].sort(function(a, b) {
+              return a.name.localeCompare(b.name, undefined, {
+                numeric: true,
+                sensitivity: 'base'
+              });
+            });
+
+            const div = document.createElement('div');
+            div.id = folderName;
+            div.classList.add('tab-content')
+            div.style.display = index === 0? 'block' : 'none';
+            div.style.padding = '10px';
+            documentData[folderName].forEach(fileData => {
+              const p = document.createElement('p');
+              const input = document.createElement('input');
+              input.classList.add('mx-2','document-check')
+              input.setAttribute('type','checkbox');
+              input.setAttribute('id', fileData.id);
+              p.appendChild(input);
+              const label = document.createElement('label')
+              label.style.fontWeight = 500;
+              label.innerText = fileData.name;
+              label.setAttribute('for', fileData.id);
+              p.appendChild(label);              
+              div.appendChild(p);
+            })
+            tabsContent.appendChild(div);
+          });
+
+          elements.document.checkboxes = [...document.querySelectorAll('input.document-check')];
+          document.getElementById('document_clear').addEventListener('click', () => elements.document.checkboxes.forEach(el => el.checked = false));
+          elements.document.submit.addEventListener('click', () => {
+            if (!elements.customer.selected) {
+               showToast('Για να συμπληρώσετε έγγραφα πρέπει πρώτα να επιλέξετε έναν πελάτη!', 'text-bg-warning');
+               return
+            }
+
+            const documentIds = elements.document.checkboxes.filter(el => el.checked).map(el => el.id);
+            if (documentIds.length) {
+              elements.customer.selected.documentIds = documentIds;
+              elements.document.submit.disabled = true;
+              elements.loading.style.display = 'block';
+              google.script.run
+                .withSuccessHandler(() => {
+                  elements.loading.style.display = 'none';
+                  elements.document.submit.disabled = false;
+                  showToast('Τα έγγραφα είναι έτοιμα!', 'text-bg-primary');
+                })
+                .withFailureHandler(() => {
+                  elements.loading.style.display = 'none';
+                  elements.document.submit.disabled = false;;
+                  showToast('Σφάλμα κατά τη δημιουργία εγγράφου!', 'text-bg-danger');
+                })
+                .createDocuments(elements.customer.selected);
+            } 
+            else showToast('Πρέπει να τσεκάρετε τουλάχιστον ένα έγγραφο για συμπλήρωση!', 'text-bg-warning');
+          });
+        })
+        .withFailureHandler(() => {
+          elements.loading.style.display = 'none';
+          showToast('Σφάλμα κατά τη φόρτωση των εγγράφων!', 'text-bg-danger');
+        })
+        .getDocuments();
+
+    function updateSelectedCustomer(formData) {
+      if (!elements.customer.selected) elements.customer.selected = {};
+      for (const [key, value] of new FormData(formData)) {
+          elements.customer.selected[key] = value;
+        }
+    }    
+  }
+</script>
