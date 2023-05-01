@@ -1,0 +1,91 @@
+<script>
+function loadDocuments() {
+  google.script.run.withSuccessHandler(documentData => {
+    elements.loading.style.display = 'none';
+    const tabsContent = document.getElementById('tabs-content');
+    const ul = document.querySelector('ul.nav-tabs');
+    
+    Object.keys(documentData).forEach((folderName, index) => {
+      const li = document.createElement('li');
+      li.classList.add('nav-item');
+      li.style.cursor = 'pointer';
+      const a = document.createElement('a');
+      a.classList.add('nav-link');
+      index === 0 && a.classList.add('active');
+      a.innerText = folderName;
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        [...document.getElementsByClassName('tab-content')].forEach(el => el.style.display = 'none');
+        [...document.getElementsByClassName('nav-link')].forEach(el => el.classList.remove('active'));
+        document.getElementById(folderName).style.display = 'block';
+        e.target.classList.add('active');
+      })
+      li.appendChild(a);
+      ul.appendChild(li);
+
+      documentData[folderName] = documentData[folderName].sort(function(a, b) {
+        return a.name.localeCompare(b.name, undefined, {
+          numeric: true,
+          sensitivity: 'base'
+        });
+      });
+
+      const div = document.createElement('div');
+      div.id = folderName;
+      div.classList.add('tab-content')
+      div.style.display = index === 0? 'block' : 'none';
+      div.style.padding = '10px';
+      documentData[folderName].forEach(fileData => {
+        const p = document.createElement('p');
+        const input = document.createElement('input');
+        input.classList.add('mx-2','document-check')
+        input.setAttribute('type','checkbox');
+        input.setAttribute('id', fileData.id);
+        p.appendChild(input);
+        const label = document.createElement('label')
+        label.style.fontWeight = 500;
+        label.innerText = fileData.name;
+        label.setAttribute('for', fileData.id);
+        p.appendChild(label);              
+        div.appendChild(p);
+      })
+      tabsContent.appendChild(div);
+    });
+
+    elements.document.checkboxes = [...document.querySelectorAll('input.document-check')];
+    document.getElementById('document_clear').addEventListener('click', () => elements.document.checkboxes.forEach(el => el.checked = false));
+    elements.document.submit.addEventListener('click', () => {
+      if (!elements.customer.selected) {
+          showToast('Για να συμπληρώσετε έγγραφα πρέπει πρώτα να επιλέξετε έναν πελάτη!', 'text-bg-warning');
+          return
+      }
+
+      const documentIds = elements.document.checkboxes.filter(el => el.checked).map(el => el.id);
+      if (documentIds.length) {
+        elements.document.submit.disabled = true;
+        elements.loading.style.display = 'block';
+        google.script.run
+          .withSuccessHandler(() => {
+            elements.loading.style.display = 'none';
+            elements.document.submit.disabled = false;
+            showToast('Τα έγγραφα είναι έτοιμα!', 'text-bg-primary');
+          })
+          .withFailureHandler(() => {
+            elements.loading.style.display = 'none';
+            elements.document.submit.disabled = false;;
+            showToast('Σφάλμα κατά τη δημιουργία εγγράφου!', 'text-bg-danger');
+          })
+          .createDocuments(elements.customer.selected, documentIds);
+      } 
+      else showToast('Πρέπει να τσεκάρετε τουλάχιστον ένα έγγραφο για συμπλήρωση!', 'text-bg-warning');
+    });
+
+    elements.loading.style.display = 'none';
+  })
+  .withFailureHandler(() => {
+    elements.loading.style.display = 'none';
+    showToast('Σφάλμα κατά τη φόρτωση των εγγράφων!', 'text-bg-danger');
+  })
+  .getDocuments();
+}
+</script>

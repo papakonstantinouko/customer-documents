@@ -31,7 +31,16 @@
             data-bs-parent="#accordion_main"
           >
             <div class="accordion-body">
-              <?!= include('index-customer'); ?>
+              <form id="customer_form">
+                <div class="row">
+                  <div class="col-md-12 action-buttons">
+                    <button type="submit" class="btn btn-primary border border-dark" id="customer_submit">Αποθήκευση</button>
+                    <button type="button" class="btn btn-primary border border-dark" id="button_search">Αναζήτηση</button>
+                    <button type="button" class="btn btn-warning border border-dark" id="button_clear">Εκκαθάριση</button>
+                    <button type="button" class="btn btn-danger border border-dark" id="button_delete">Διαγραφή</button>
+                  </div>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -74,5 +83,7 @@
       crossorigin="anonymous"></script>
     <script src="https://unpkg.com/micromodal/dist/micromodal.min.js"></script>
     <?!= include('javascript'); ?>
+    <?!= include('javascript-customer'); ?>
+    <?!= include('javascript-document'); ?>
   </body>
 </html>
